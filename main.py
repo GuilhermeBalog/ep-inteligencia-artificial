@@ -7,7 +7,8 @@ from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import balanced_accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import plot_confusion_matrix, confusion_matrix
 
 classifiers = [KNeighborsClassifier(), MLPClassifier(), DecisionTreeClassifier()]
 params = [knn, mlp, decisionTree]
@@ -63,6 +64,8 @@ def normalize(X):
 
 
 def param_calibration(x, y):
+    X_train, X_test, y_train, y_test = train_test_split(x, y, train_size=0.8)
+
     cv = StratifiedKFold(n_splits=10)
 
     for classifier, param in zip(classifiers, params):
@@ -79,13 +82,16 @@ def param_calibration(x, y):
             verbose=0,
             refit='accuracy'
         )
-        results = grid_search.fit(x, y)
+        results = grid_search.fit(X_train, y_train)
 
         accuracy = results.best_score_
         precision = results.cv_results_['mean_test_precision'][results.best_index_]
         recall = results.cv_results_['mean_test_recall'][results.best_index_]
         f1 = results.cv_results_['mean_test_f1'][results.best_index_]
         parameters = results.best_params_
+
+        plot_confusion_matrix(results.best_estimator_, X_test, y_test, cmap='Purples')
+        plt.show()
 
         print("Acurácia: ", accuracy)
         print("Precisão: ", precision)
@@ -116,10 +122,14 @@ def show_dataset_info(x):
 
 if __name__ == '__main__':
 
+    best_attributes = ['word_freq_000', 'word_freq_your', 'word_freq_you', 'word_freq_email', 'charfreq$', 'label']
+
     np.set_printoptions(precision=3, suppress=True)
     pd.set_option('display.expand_frame_repr', False)
 
     x = pd.read_csv('spambase.csv')
+
+    pairplot(x[best_attributes])
 
     y = x['label']
     x = x.drop('label', axis=1)
