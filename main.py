@@ -2,44 +2,51 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from constants import knn, mlp, decisionTree
+from parameters import knn, mlp, decisionTree
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import plot_confusion_matrix, confusion_matrix
+from sklearn.metrics import plot_confusion_matrix
 
 classifiers = [KNeighborsClassifier(), MLPClassifier(), DecisionTreeClassifier()]
 params = [knn, mlp, decisionTree]
 
+np.set_printoptions(precision=3, suppress=True)
+pd.set_option('display.expand_frame_repr', False)
+
+search_count = 0
 
 def save(title):
-  plt.savefig(f'./img/{title}.png')
-  plt.clf()
+    plt.savefig(f'./img/{title}.png')
+    plt.clf()
 
 
 def correlation(df):
-  print('Plotando matrix de correlação')
+    print('Plotando matrix de correlação')
 
-  matrix = df.corr()
-  c = df.corr().abs()
+    matrix = df.corr()
 
-  s = c.unstack()
-  so = s.sort_values(kind="quicksort")
-  print(so)
-
-  plt.figure()
-  sns.heatmap(matrix, cmap='Greens')
-  save('correlation')
+    plt.figure()
+    sns.heatmap(matrix, cmap='Blues')
+    save('correlation')
 
 
 def pairplot(df):
-  print('Plotando pairplot')
+    print('Plotando pairplot')
 
-  plt.figure()
-  sns.pairplot(df, hue='label', corner=True)
-  save('pairplot')
+    plt.figure()
+    sns.pairplot(df, hue='label', corner=True)
+    save('pairplot')
+
+
+def confusion_matrix(name, estimator, X, y):
+    print('Plotando matriz de confusão')
+
+    plt.figure()
+    plot_confusion_matrix(estimator, X, y, cmap='Blues')
+    save(f'{name}-{search_count}')
 
 
 def normalize(X):
@@ -64,15 +71,21 @@ def normalize(X):
 
 
 def param_calibration(x, y):
+    search_count += 1
+
+    # Separa o conjunto de dados em 80% para treino e 20% para teste
     X_train, X_test, y_train, y_test = train_test_split(x, y, train_size=0.8)
 
+    # Define a estratégia de validação cruzada com 10 divisões
     cv = StratifiedKFold(n_splits=10)
 
+    # Itera sobre os classificadores e seus parâmetros
     for classifier, param in zip(classifiers, params):
         print("\nClassficador e parametros: ")
         print(classifier, param)
-        print("")
+        print()
 
+        # Define a forma de procurar o melhor conjunto de parâmetros
         grid_search = GridSearchCV(
             estimator=classifier,
             param_grid=param,
@@ -82,22 +95,25 @@ def param_calibration(x, y):
             verbose=0,
             refit='accuracy'
         )
+        # Treina o classificador atual com os diferentes conjuntos de parâmetros
         results = grid_search.fit(X_train, y_train)
 
+        # Define a acurácia, precisão, revocação, F-measure e o melhor conjunto de parâmetros
         accuracy = results.best_score_
         precision = results.cv_results_['mean_test_precision'][results.best_index_]
         recall = results.cv_results_['mean_test_recall'][results.best_index_]
         f1 = results.cv_results_['mean_test_f1'][results.best_index_]
         parameters = results.best_params_
 
-        plot_confusion_matrix(results.best_estimator_, X_test, y_test, cmap='Purples')
-        plt.show()
-
         print("Acurácia: ", accuracy)
         print("Precisão: ", precision)
         print("Revocação (sensibilidade): ", recall)
         print("F-measure: ", f1)
         print("Melhores parametros: ", parameters)
+
+        # Cria matriz de confusão
+        confusion_matrix(classifier, results.best_estimator_, X_test, y_test)
+
 
 
 def show_dataset_info(x):
@@ -121,16 +137,17 @@ def show_dataset_info(x):
 
 
 if __name__ == '__main__':
-
-    best_attributes = ['word_freq_000', 'word_freq_your', 'word_freq_you', 'word_freq_email', 'charfreq$', 'label']
-
-    np.set_printoptions(precision=3, suppress=True)
-    pd.set_option('display.expand_frame_repr', False)
-
+    # Carrega o conjunto de dados
     x = pd.read_csv('spambase.csv')
 
+    # Cria o pairplot com os atributos mais interessantes
+    best_attributes = ['word_freq_000', 'word_freq_your', 'word_freq_you', 'word_freq_email', 'charfreq$', 'label']
     pairplot(x[best_attributes])
 
+    # Cria a matrix de correlação para o conjunto de dados
+    correlation(x)
+
+    # Remove a coluna da label para não influenciar no treinamento
     y = x['label']
     x = x.drop('label', axis=1)
 

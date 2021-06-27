@@ -1,2 +1,3 @@
-# EP-Inteligencia-artificial
-Primeiro e único EP de IA
+# EP Inteligência Artificial
+
+🧠 Exercício Programa abordando algoritmos de classificação para a disciplina Inteligência Artificial da EACH-USP
